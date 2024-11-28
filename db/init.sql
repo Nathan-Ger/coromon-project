@@ -13,7 +13,7 @@ CREATE INDEX idx_types_name_search_vector ON types USING gin(search_vector);
 
 CREATE TABLE IF NOT EXISTS coromon (
   coro_id INTEGER PRIMARY KEY,
-  name VARCHAR (255) NOT NULL,
+  name VARCHAR (255) UNIQUE NOT NULL,
   type_id INTEGER NOT NULL,
   sp INT DEFAULT 34, -- Every coromon has 54 SP as their stat, but it is a stat that can be edited
 
@@ -53,22 +53,25 @@ CREATE TABLE IF NOT EXISTS type_effectiveness (
 -- Add a Composite Index on defending_type_id and attacking_type_id
 CREATE INDEX idx_type_effectiveness_defending_attacking ON type_effectiveness (defending_type_id, attacking_type_id);
 
-CREATE TABLE IF NOT EXISTS evolution_stage (
-  evolution_stage_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS coromon_evolutions (
+  coromon_evolution_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   coro_id INTEGER NOT NULL,
-  stage_level INTEGER NOT NULL DEFAULT 1,
+  pre_evo_coro_id INTEGER NULL,
+  next_evo_coro_id INTEGER NULL,
+  condition_to_evolve VARCHAR(255) NULL, -- Level / Item it will evolve, e.g. "Level 20", "Using Item X", etc... If Null means it cannot evolve, next_evo_coro_id should also be null
 
-  -- Foreign Key to coromon Table
-  CONSTRAINT fk_coromon
-    FOREIGN KEY(coro_id)
+  CONSTRAINT fk_pre_evo_coro
+    FOREIGN KEY (pre_evo_coro_id)
+      REFERENCES coromon(coro_id),
+  CONSTRAINT fk_next_evo_coro
+    FOREIGN KEY (next_evo_coro_id)
       REFERENCES coromon(coro_id)
 );
 
--- Add a B-Tree Index on evolution_stage.coro_id
-CREATE INDEX idx_evolution_stage_coro_id ON evolution_stage (coro_id);
-
--- Add a B-Tree Index on evolution_stage.stage_level
-CREATE INDEX idx_evolution_stage_stage_level ON evolution_stage (stage_level);
+-- Add a B-Tree Index on coromon_evolutions.coro_id, coromon_evolutions.pre_evo_coro_id, coromon_evolutions.next_evo_coro_id
+CREATE INDEX idx_coromon_evolutions_coro_id on coromon_evolutions (coro_id);
+CREATE INDEX idx_coromon_evolutions_pre_evo_coro_id on coromon_evolutions (pre_evo_coro_id);
+CREATE INDEX idx_coromon_evolutions_next_evo_coro_id on coromon_evolutions (next_evo_coro_id);
 
 -- Create Enum for table traits
 CREATE TYPE traits_type AS ENUM('Passive', 'Active');
@@ -183,11 +186,11 @@ CREATE INDEX idx_coromon_stats_stat_type ON coromon_stats (stat_type);
 -- Add a Composite Index on coromon_stats.coro_id and coromon_stats.stat_type
 CREATE INDEX idx_coromon_stats_coro_id_stat_type ON coromon_stats (coro_id, stat_type);
 
-CREATE TABLE IF NOT EXISTS moves (
-  move_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS skills (
+  skill_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   name VARCHAR(255) UNIQUE NOT NULL,
   type_id INTEGER NOT NULL,
-  move_power INTEGER,
+  skill_power INTEGER,
   accuracy DECIMAL DEFAULT 100,
 
   -- Foreign Key to coromon Table
@@ -201,44 +204,44 @@ CREATE TABLE IF NOT EXISTS moves (
   ) STORED
 );
 
--- Add a GIN index on moves.name
-CREATE INDEX idx_moves_name_search_vector ON moves USING gin(search_vector);
+-- Add a GIN index on skills.name
+CREATE INDEX idx_skills_name_search_vector ON skills USING gin(search_vector);
 
--- Add a B-Tree Index on moves.type_id and moves.move_power
-CREATE INDEX idx_moves_type_id ON moves (type_id);
-CREATE INDEX idx_moves_move_power ON moves (move_power);
+-- Add a B-Tree Index on skills.type_id and skills.skill_power
+CREATE INDEX idx_skills_type_id ON skills (type_id);
+CREATE INDEX idx_skills_skill_power ON skills (skill_power);
 
-CREATE TABLE IF NOT EXISTS coromon_moves (
+CREATE TABLE IF NOT EXISTS coromon_skills (
   coro_id INTEGER NOT NULL,
-  move_id INTEGER NOT NULL,
+  skill_id INTEGER NOT NULL,
   learn_level INTEGER CHECK (learn_level BETWEEN 0 and 99),
 
   -- Foreign Key to coromon Table
   CONSTRAINT fk_coromon
     FOREIGN KEY(coro_id)
       REFERENCES coromon(coro_id),
-  -- Foreign Key to moves Table
-  CONSTRAINT fk_moves
-    FOREIGN KEY(move_id)
-      REFERENCES moves(move_id),
+  -- Foreign Key to skills Table
+  CONSTRAINT fk_skills
+    FOREIGN KEY(skill_id)
+      REFERENCES skills(skill_id),
 
-  PRIMARY KEY(coro_id, move_id)
+  PRIMARY KEY(coro_id, skill_id)
 );
 
--- Add a B-Tree Index on coromon_moves.coro_id and coromon_moves.move_id
-CREATE INDEX idx_coromon_moves_coro_id ON coromon_moves (coro_id);
-CREATE INDEX idx_coromon_moves_move_id ON coromon_moves (move_id);
+-- Add a B-Tree Index on coromon_skills.coro_id and coromon_skills.skill_id
+CREATE INDEX idx_coromon_skills_coro_id ON coromon_skills (coro_id);
+CREATE INDEX idx_coromon_skills_skill_id ON coromon_skills (skill_id);
 
--- Add a Composite Index on coromon_moves.coro_id and coromon_moves.move_id
-CREATE INDEX idx_coromon_moves_coro_id_move_id ON coromon_moves (coro_id, move_id);
+-- Add a Composite Index on coromon_skills.coro_id and coromon_skills.skill_id
+CREATE INDEX idx_coromon_skills_coro_id_skill_id ON coromon_skills (coro_id, skill_id);
 
--- Create Enum for table move_effect_types
-CREATE TYPE move_effect_types_type AS ENUM('Status', 'Damage', 'Stat_Positive', 'Stat_Negative');
+-- Create Enum for table skill_effect_types
+CREATE TYPE skill_effect_types_type AS ENUM('Status', 'Damage', 'Stat_Positive', 'Stat_Negative');
 
-CREATE TABLE IF NOT EXISTS move_effect_types (
-  move_effect_type_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS skill_effect_types (
+  skill_effect_type_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   name VARCHAR(100) NOT NULL,
-  type MOVE_EFFECT_TYPES_TYPE NOT NULL DEFAULT 'Damage',
+  type SKILL_EFFECT_TYPES_TYPE NOT NULL DEFAULT 'Damage',
 
   -- Add tsvector column for full-text search
   search_vector tsvector GENERATED ALWAYS AS (
@@ -246,25 +249,25 @@ CREATE TABLE IF NOT EXISTS move_effect_types (
   ) STORED
 );
 
--- Add a GIN index on move_effect_types.name
-CREATE INDEX idx_move_effect_types_name_search_vector ON move_effect_types USING gin(search_vector);
+-- Add a GIN index on skill_effect_types.name
+CREATE INDEX idx_skill_effect_types_name_search_vector ON skill_effect_types USING gin(search_vector);
 
-CREATE TABLE IF NOT EXISTS move_effects (
-  move_effect_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  move_id INTEGER NOT NULL,
-  move_effect_type_id INTEGER NOT NULL,
+CREATE TABLE IF NOT EXISTS skill_effects (
+  skill_effect_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  skill_id INTEGER NOT NULL,
+  skill_effect_type_id INTEGER NOT NULL,
   value DECIMAL NOT NULL,
   chance DECIMAL NOT NULL DEFAULT 1.00,
   is_primary BOOLEAN NOT NULL DEFAULT TRUE,
 
-  -- Foreign Key to moves Table
-  CONSTRAINT fk_moves
-    FOREIGN KEY(move_id)
-      REFERENCES moves(move_id),
-  -- Foreign Key to moves Table
-  CONSTRAINT fk_move_effect_types
-    FOREIGN KEY(move_effect_type_id)
-      REFERENCES move_effect_types(move_effect_type_id)
+  -- Foreign Key to skills Table
+  CONSTRAINT fk_skills
+    FOREIGN KEY(skill_id)
+      REFERENCES skills(skill_id),
+  -- Foreign Key to skills Table
+  CONSTRAINT fk_skill_effect_types
+    FOREIGN KEY(skill_effect_type_id)
+      REFERENCES skill_effect_types(skill_effect_type_id)
 );
 
 -- Inserting All Types Into Types Table
@@ -398,20 +401,20 @@ VALUES
   (108, 'Makinja', (SELECT type_id FROM types WHERE name = 'Normal')),
   (109, 'Glacikid', (SELECT type_id FROM types WHERE name = 'Ice')),
   (110, 'Arctiram', (SELECT type_id FROM types WHERE name = 'Ice')),
-  (111, 'Fiddly', (SELECT type_id FROM types WHERE name = 'Crimsonite')),
-  (112, 'Ucaclaw', (SELECT type_id FROM types WHERE name = 'Crimsonite')),
-  (113, 'Lumon', (SELECT type_id FROM types WHERE name = 'Crimsonite')),
-  (114, 'Lampyre', (SELECT type_id FROM types WHERE name = 'Crimsonite')),
-  (115, 'Lumasect', (SELECT type_id FROM types WHERE name = 'Crimsonite')),
-  (116, 'Decibite', (SELECT type_id FROM types WHERE name = 'Crimsonite')),
-  (117, 'Centilla', (SELECT type_id FROM types WHERE name = 'Crimsonite')),
-  (118, 'Millidont', (SELECT type_id FROM types WHERE name = 'Crimsonite')),
-  (119, 'Arcta', (SELECT type_id FROM types WHERE name = 'Crimsonite')),
-  (120, 'Arcturos', (SELECT type_id FROM types WHERE name = 'Crimsonite')),
-  (121, 'Otogy', (SELECT type_id FROM types WHERE name = 'Crimsonite')),
-  (122, 'Orotchy', (SELECT type_id FROM types WHERE name = 'Crimsonite')),
-  (123, 'Squidma', (SELECT type_id FROM types WHERE name = 'Crimsonite')),
-  (124, 'Magmilus', (SELECT type_id FROM types WHERE name = 'Crimsonite'));
+  (111, 'Crimsonite Fiddly', (SELECT type_id FROM types WHERE name = 'Crimsonite')),
+  (112, 'Crimsonite Ucaclaw', (SELECT type_id FROM types WHERE name = 'Crimsonite')),
+  (113, 'Crimsonite Lumon', (SELECT type_id FROM types WHERE name = 'Crimsonite')),
+  (114, 'Crimsonite Lampyre', (SELECT type_id FROM types WHERE name = 'Crimsonite')),
+  (115, 'Crimsonite Lumasect', (SELECT type_id FROM types WHERE name = 'Crimsonite')),
+  (116, 'Crimsonite Decibite', (SELECT type_id FROM types WHERE name = 'Crimsonite')),
+  (117, 'Crimsonite Centilla', (SELECT type_id FROM types WHERE name = 'Crimsonite')),
+  (118, 'Crimsonite Millidont', (SELECT type_id FROM types WHERE name = 'Crimsonite')),
+  (119, 'Crimsonite Arcta', (SELECT type_id FROM types WHERE name = 'Crimsonite')),
+  (120, 'Crimsonite Arcturos', (SELECT type_id FROM types WHERE name = 'Crimsonite')),
+  (121, 'Crimsonite Otogy', (SELECT type_id FROM types WHERE name = 'Crimsonite')),
+  (122, 'Crimsonite Orotchy', (SELECT type_id FROM types WHERE name = 'Crimsonite')),
+  (123, 'Crimsonite Squidma', (SELECT type_id FROM types WHERE name = 'Crimsonite')),
+  (124, 'Crimsonite Magmilus', (SELECT type_id FROM types WHERE name = 'Crimsonite'));
 
 -- Inserting Titans Into Coromon Table
 INSERT INTO coromon (coro_id, name, type_id, sp)
@@ -422,7 +425,7 @@ VALUES
   (1003, 'Hozai', (SELECT type_id FROM types WHERE name = 'Fire'), 160),
   (1004, 'Vørst', (SELECT type_id FROM types WHERE name = 'Ice'), 160),
   (1005, 'Chalchiu', (SELECT type_id FROM types WHERE name = 'Water'), 160),
-  (1006, 'Chalchiu Dark Form', (SELECT type_id FROM types WHERE name = 'Crimsonite'), 160);
+  (1006, 'Dark Form Chalchiu', (SELECT type_id FROM types WHERE name = 'Crimsonite'), 160);
   
 -- Inserting Into The Type Effectiveness Table
 INSERT INTO type_effectiveness (attacking_type_id, defending_type_id, multiplier)
@@ -554,6 +557,139 @@ VALUES
   ((SELECT type_id FROM types WHERE name = 'Crimsonite'), (SELECT type_id FROM types WHERE name = 'Water'), 1.0),
   ((SELECT type_id FROM types WHERE name = 'Crimsonite'), (SELECT type_id FROM types WHERE name = 'Crimsonite'), 1.0);
 
+INSERT INTO coromon_evolutions (coro_id, pre_evo_coro_id, next_evo_coro_id, condition_to_evolve)
+VALUES
+  (1, NULL, 2, 'Level 16'),
+  (2, 1, 3, 'Level 34'),
+  (3, 2, NULL, NULL),
+  (4, NULL, 5, 'Level 16'),
+  (5, 4, 6, 'Level 36'),
+  (6, 5, NULL, NULL),
+  (7, NULL, 8, 'Level 17'),
+  (8, 7, 9, 'Level 35'),
+  (9, 8, NULL, NULL),
+  (10, NULL, 11, 'Level 14, Attack is raised 6 stages in a single battle'),
+  (11, 10, 12, 'Level 28'),
+  (12, 11, NULL, NULL),
+  (13, NULL, 14, 'Level 15'),
+  (14, 13, 15, 'Level 41'),
+  (15, 14, NULL, NULL),
+  (16, NULL, 17, 'Level 25'),
+  (17, 16, NULL, NULL),
+  (18, NULL, 19, 'Level 34'),
+  (19, 18, NULL, NULL),
+  (20, NULL, 21, 'Level 18'),
+  (21, 20, 22, 'Level 33'),
+  (22, 21, NULL, NULL),
+  (23, NULL, 24, 'Level 30'),
+  (24, 23, NULL, NULL),
+  (25, NULL, 26, 'Level 30'),
+  (26, 25, NULL, NULL),
+  (27, NULL, 28, 'Level 23'),
+  (28, 27, 29, 'Level 44'),
+  (29, 28, NULL, NULL),
+  (30, NULL, 31, 'Level 34'),
+  (31, 30, NULL, NULL),
+  (32, NULL, 33, 'Level 17'),
+  (33, 32, 34, 'Level 31'),
+  (34, 33, NULL, NULL),
+  (35, NULL, 36, 'Level 17'),
+  (36, 35, 37, 'Level 36'),
+  (37, 36, NULL, NULL),
+  (38, NULL, 39, 'Level 21'),
+  (39, 38, 40, 'Level 39, Two Opponent Lunarwulfs use Howl in the same turn'),
+  (40, 39, NULL, NULL),
+  (41, NULL, 42, 'Level 18'),
+  (42, 41, 43, 'Level 39'),
+  (43, 42, NULL, NULL),
+  (44, NULL, 45, 'Level 12'),
+  (45, 44, 46, 'Level 34'),
+  (46, 45, NULL, NULL),
+  (47, NULL, 48, 'Level 35'),
+  (48, 47, NULL, NULL),
+  (49, NULL, 50, 'Level 37'),
+  (50, 49, NULL, NULL),
+  (51, NULL, 52, 'Level 21'),
+  (52, 51, 53, 'Level 34'),
+  (53, 52, NULL, NULL),
+  (54, NULL, 55, 'Level 18'),
+  (55, 54, 56, 'Level 37'),
+  (56, 55, NULL, NULL),
+  (57, NULL, 58, 'Level 28'),
+  (58, 57, NULL, NULL),
+  (59, NULL, 60, 'Level 24'),
+  (60, 59, NULL, NULL),
+  (61, NULL, 62, 'Level 32'),
+  (62, 61, NULL, NULL),
+  (63, NULL, 64, 'Level 30'),
+  (64, 63, NULL, NULL),
+  (65, NULL, 66, 'Level 16'),
+  (66, 65, 67, 'Level 30'),
+  (67, 66, NULL, NULL),
+  (68, NULL, 69, 'Level 30, When a Pitterbyte Kernel is installed'),
+  (69, 68, 70, 'Level 50'),
+  (70, 69, NULL, NULL),
+  (71, NULL, 72, 'Level 24'),
+  (72, 71, 73, 'Level 39'),
+  (73, 72, NULL, NULL),
+  (74, NULL, 75, 'Level 18'),
+  (75, 74, 76, 'Level 38'),
+  (76, 75, NULL, NULL),
+  (77, NULL, 78, 'Level 18'),
+  (78, 77, 79, 'Level 32'),
+  (79, 78, NULL, NULL),
+  (80, NULL, 81, 'Level 40'),
+  (81, 80, NULL, NULL),
+  (82, NULL, 83, 'Level 38, Every Purrgy Nibbles eaten lowers level by 1'),
+  (83, 82, 84, 'Level 50'),
+  (84, 83, NULL, NULL),
+  (85, NULL, 86, 'Level 38'),
+  (86, 85, NULL, NULL),
+  (87, NULL, 88, 'Level 32'),
+  (88, 87, NULL, NULL),
+  (89, NULL, 90, 'Level 37, When its spinner is dipped into the Witchs Kettle'),
+  (90, 89, NULL, NULL),
+  (91, NULL, 92, 'Level 42'),
+  (92, 91, NULL, NULL),
+  (93, NULL, 94, 'Level 23'),
+  (94, 93, 95, 'Level 45'),
+  (95, 94, NULL, NULL),
+  (96, NULL, 97, 'Level 39'),
+  (97, 96, NULL, NULL),
+  (98, NULL, 99, 'Level 32'),
+  (99, 98, NULL, NULL),
+  (100, NULL, 101, 'Level 20'),
+  (101, 100, 102, 'Level 38'),
+  (102, 101, NULL, NULL),
+  (103, NULL, 104, 'Level 40'),
+  (104, 103, NULL, NULL),
+  (105, NULL, 106, 'Level 38'),
+  (106, 105, NULL, NULL),
+  (107, NULL, 108, 'Level 33'),
+  (108, 107, NULL, NULL),
+  (109, NULL, 110, '38'),
+  (110, 109, NULL, NULL),
+  (111, NULL, 112, 'Level 34'),
+  (112, 111, NULL, NULL),
+  (113, NULL, 114, 'Level 16'),
+  (114, 113, 115, 'Level 30'),
+  (115, 114, NULL, NULL),
+  (116, NULL, 117, 'Level 24'),
+  (117, 116, 118, 'Level 39'),
+  (118, 117, NULL, NULL),
+  (119, NULL, 120, 'Level 24'),
+  (120, 119, NULL, NULL),
+  (121, NULL, 122, 'Level 40'),
+  (122, 121, NULL, NULL),
+  (123, NULL, 124, 'Level 30'),
+  (124, 123, NULL, NULL),
+  (1000, NULL, NULL, NULL),
+  (1001, NULL, NULL, NULL),
+  (1002, NULL, NULL, NULL),
+  (1003, NULL, NULL, NULL),
+  (1004, NULL, NULL, NULL),
+  (1005, NULL, NULL, NULL),
+  (1006, NULL, NULL, NULL);
 
 
 
@@ -596,40 +732,3 @@ VALUES
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  
