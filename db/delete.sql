@@ -1,0 +1,17 @@
+DROP TABLE IF EXISTS move_effect_types;
+DROP TYPE IF EXISTS move_effect_types_type;
+DROP TABLE IF EXISTS coromon_moves;
+DROP TABLE IF EXISTS moves;
+DROP TABLE IF EXISTS coromon_stats;
+DROP TYPE IF EXISTS coromon_stats_stat_type;
+DROP TABLE IF EXISTS trait_version_effects;
+DROP TABLE IF EXISTS effect_types;
+DROP TYPE IF EXISTS effect_types_type;
+DROP TABLE IF EXISTS coromon_traits;
+DROP TABLE IF EXISTS trait_versions;
+DROP TABLE IF EXISTS traits;
+DROP TYPE IF EXISTS traits_type;
+DROP TABLE IF EXISTS type_effectiveness;
+DROP TABLE IF EXISTS evolution_stage;
+DROP TABLE IF EXISTS coromon;
+DROP TABLE IF EXISTS types;
