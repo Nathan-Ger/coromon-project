@@ -80,7 +80,6 @@ CREATE TABLE IF NOT EXISTS traits (
   trait_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   type TRAITS_TYPE NOT NULL,
-  effect_desc TEXT NOT NULL,
 
   -- Add tsvector column for full-text search
   search_vector tsvector GENERATED ALWAYS AS (
@@ -95,7 +94,7 @@ CREATE TABLE trait_versions (
   trait_version_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   trait_id INTEGER NOT NULL,
   plus INTEGER NOT NULL DEFAULT 0,
-  version_description TEXT NOT NULL
+  description TEXT NOT NULL
 );
 
 -- Add a B-Tree Index on trait_versions.trait_id
@@ -105,6 +104,7 @@ CREATE TABLE IF NOT EXISTS coromon_traits (
   trait_id INTEGER NOT NULL,
   coro_id INTEGER NOT NULL,
   trait_version_id INTEGER NOT NULL,
+  chance DECIMAL NOT NULL,
 
   -- Foreign Key to traits Table
   CONSTRAINT fk_traits
@@ -557,6 +557,7 @@ VALUES
   ((SELECT type_id FROM types WHERE name = 'Crimsonite'), (SELECT type_id FROM types WHERE name = 'Water'), 1.0),
   ((SELECT type_id FROM types WHERE name = 'Crimsonite'), (SELECT type_id FROM types WHERE name = 'Crimsonite'), 1.0);
 
+-- Inserting All Coromon Evolutions Into Coromon Evolutions Table
 INSERT INTO coromon_evolutions (coro_id, pre_evo_coro_id, next_evo_coro_id, condition_to_evolve)
 VALUES
   (1, NULL, 2, 'Level 16'),
@@ -691,8 +692,125 @@ VALUES
   (1005, NULL, NULL, NULL),
   (1006, NULL, NULL, NULL);
 
-
-
+-- Inserting All Traits Into Traits Table
+INSERT INTO traits (name, type)
+VALUES
+  ('Accurate', 'Passive'),
+  ('Acupuncture', 'Active'),
+  ('Afterburner', 'Passive'),
+  ('Amplified', 'Passive'),
+  ('Antarctic', 'Passive'),
+  ('Antidote', 'Active'),
+  ('Anti-fungal', 'Passive'),
+  ('Backup Plan', 'Passive'),
+  ('Brave', 'Passive'),
+  ('Bright Light', 'Passive'),
+  ('Caffeinated', 'Passive'),
+  ('Cleanse', 'Passive'),
+  ('Clean Retreat', 'Passive'),
+  ('Clear Skies', 'Passive'),
+  ('Comeback', 'Passive'),
+  ('Conductor', 'Passive'),
+  ('Conserver', 'Passive'),
+  ('Contained Power', 'Passive'),
+  ('Cool Body', 'Passive'),
+  ('Cosmic', 'Passive'),
+  ('Coward', 'Passive'),
+  ('Creeping Stare', 'Passive'),
+  ('Crippler', 'Passive'),
+  ('Dark Atmosphere', 'Passive'),
+  ('Dimensional Eye', 'Passive'),
+  ('Dirt Coat', 'Passive'),
+  ('Disrupting Aura', 'Passive'),
+  ('Dry Wind', 'Passive'),
+  ('Empathetic', 'Passive'),
+  ('Escapist', 'Passive'),
+  ('Fast Learner', 'Passive'),
+  ('Fast Metabolism', 'Passive'),
+  ('Fearless', 'Passive'),
+  ('Flare Intake', 'Passive'),
+  ('Frost Layer', 'Passive'),
+  ('Fully Rested', 'Passive'),
+  ('Glacial Affinity', 'Passive'),
+  ('Good Aim', 'Passive'),
+  ('Gourmand', 'Passive'),
+  ('Gravity Pull', 'Passive'),
+  ('Gullibile', 'Passive'),
+  ('Hardheaded', 'Passive'),
+  ('Hoarder', 'Passive'),
+  ('Hot Headed', 'Passive'),
+  ('Humidifier', 'Passive'),
+  ('Impatient', 'Passive'),
+  ('Inner Fire', 'Passive'),
+  ('Intelligent', 'Passive'),
+  ('Inverse', 'Passive'),
+  ('Kindred Soul', 'Passive'),
+  ('Low Density', 'Passive'),
+  ('Lucky', 'Passive'),
+  ('Magic Layer', 'Passive'),
+  ('Magnetic', 'Passive'),
+  ('Menacing', 'Passive'),
+  ('Molter', 'Passive'),
+  ('Motivated', 'Passive'),
+  ('Nano Skin', 'Passive'),
+  ('Neutralizer', 'Passive'),
+  ('Nimble', 'Passive'),
+  ('Ninja Sense', 'Passive'),
+  ('Nurse', 'Active'),
+  ('Overclocker', 'Passive'),
+  ('Patdown', 'Passive'),
+  ('Pep Talk', 'Active'),
+  ('Polished Body', 'Passive'),
+  ('Polluter', 'Passive'),
+  ('Prepared', 'Passive'),
+  ('Radiator', 'Passive'),
+  ('Rebirth', 'Passive'),
+  ('Reconstitution', 'Active'),
+  ('Regurgitator', 'Passive'),
+  ('Reignite', 'Passive'),
+  ('Resistant', 'Passive'),
+  ('Restless', 'Passive'),
+  ('Robber', 'Passive'),
+  ('Scrapper', 'Passive'),
+  ('Sharp Claws', 'Passive'),
+  ('Shiny', 'Passive'),
+  ('Shock Absorber', 'Passive'),
+  ('Short Fused', 'Passive'),
+  ('Slippery', 'Passive'),
+  ('Snowman', 'Passive'),
+  ('Soothing Aura', 'Active'),
+  ('Soul Eater', 'Passive'),
+  ('Specialist', 'Passive'),
+  ('Spiked Body', 'Passive'),
+  ('Static Body', 'Passive'),
+  ('Steady', 'Passive'),
+  ('Steam Layer', 'Passive'),
+  ('Sticky Layer', 'Passive'),
+  ('Stinky', 'Passive'),
+  ('Stoic', 'Passive'),
+  ('Strategist', 'Passive'),
+  ('Sugar Rush', 'Passive'),
+  ('Supersensory', 'Passive'),
+  ('Tactical Retreat', 'Passive'),
+  ('Thermogenesis', 'Passive'),
+  ('Thick Skin', 'Passive'),
+  ('Pure Essence Voltgar', 'Passive'),
+  ('Pure Essence Hozai', 'Passive'),
+  ('Pure Essence Illuginn', 'Passive'),
+  ('Pure Essence Vørst', 'Passive'),
+  ('Pure Essense Sart', 'Passive'),
+  ('Pure Essense Chalchiu', 'Passive'),
+  ('Pure Essense Dark Form Chalchiu', 'Passive'),
+  ('Tough Feet', 'Passive'),
+  ('Toxic Skin', 'Passive'),
+  ('Vaccinated', 'Passive'),
+  ('Vegetarian', 'Passive'),
+  ('Vengeful', 'Passive'),
+  ('Vigilant', 'Passive'),
+  ('Water Cooled', 'Passive'),
+  ('Weatherproof', 'Passive'),
+  ('Wet Coat', 'Passive'),
+  ('Zealous', 'Passive');
 
 
 
