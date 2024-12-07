@@ -1,13 +1,7 @@
-DROP TABLE IF EXISTS skill_effects;
-DROP TABLE IF EXISTS skill_effect_types;
-DROP TYPE IF EXISTS skill_effect_types_type;
 DROP TABLE IF EXISTS coromon_skills;
 DROP TABLE IF EXISTS skills;
 DROP TABLE IF EXISTS coromon_stats;
 DROP TYPE IF EXISTS coromon_stats_stat_type;
-DROP TABLE IF EXISTS trait_version_effects;
-DROP TABLE IF EXISTS effect_types;
-DROP TYPE IF EXISTS effect_types_type;
 DROP TABLE IF EXISTS coromon_traits;
 DROP TABLE IF EXISTS trait_versions;
 DROP TABLE IF EXISTS traits;
