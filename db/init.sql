@@ -125,18 +125,20 @@ CREATE INDEX idx_coromon_traits_trait_id ON coromon_traits (trait_id);
 CREATE INDEX idx_coromon_traits_trait_coro_id ON coromon_traits (trait_id, coro_id);
 
 -- Create Enum for table effect_types
-CREATE TYPE effect_types_type AS ENUM('Status', 'Stat_Positive', 'Stat_Negative'); -- more to be added
+CREATE TYPE effect_types_type AS ENUM('Status', 'Stat_Positive', 'Stat_Negative', 'Status_Removal', 'Status_Negation', 'Weather', 
+                                      'Weather_Block', 'Heal', 'Other', 'Entry_Hazards', 'Percent_Positive', 'Percent_Negative', 
+                                      'Require_Less', 'Stat_Other', 'Stat_Block', 'Deplete'); -- more to be added
 
 CREATE TABLE IF NOT EXISTS effect_types (
-  effect_type_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   type EFFECT_TYPES_TYPE NOT NULL,
-  self_inflicted BOOLEAN NOT NULL DEFAULT FALSE,
 
   -- Add tsvector column for full-text search
   search_vector tsvector GENERATED ALWAYS AS (
     to_tsvector('simple', name)
   ) STORED
+
+  PRIMARY KEY(name, type);
 );
 
 -- Add a GIN index on effect_types.name
@@ -146,6 +148,7 @@ CREATE TABLE IF NOT EXISTS trait_version_effects (
   trait_version_effect_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   trait_version_id INTEGER NOT NULL,
   effect_type_id INTEGER NOT NULL,
+  when_happens VARCHAR(255) NOT NULL,
   value DECIMAL NOT NULL,
 
   -- Foreign Key to trait_versions Table
@@ -593,7 +596,8 @@ VALUES
   ((SELECT coro_id FROM coromon WHERE name = 'Bazzer'), (SELECT coro_id FROM coromon WHERE name = 'Buzzlet'), (SELECT coro_id FROM coromon WHERE name = 'Rhynobuz'), 'Level 36'),
   ((SELECT coro_id FROM coromon WHERE name = 'Rhynobuz'), (SELECT coro_id FROM coromon WHERE name = 'Bazzer'), NULL, NULL),
   ((SELECT coro_id FROM coromon WHERE name = 'Lunarpup'), NULL, (SELECT coro_id FROM coromon WHERE name = 'Lunarwulf'), 'Level 21'),
-  ((SELECT coro_id FROM coromon WHERE name = 'Lunarwulf'), (SELECT coro_id FROM coromon WHERE name = 'Lunarpup'), (SELECT coro_id FROM coromon WHERE name = 'Eclyptor'), 'Level 39, Two Opponent Lunarwulfs use Howl in the same turn'),
+  ((SELECT coro_id FROM coromon WHERE name = 'Lunarwulf'), (SELECT coro_id FROM coromon WHERE name = 'Lunarpup'), (SELECT coro_id FROM coromon WHERE name = 'Eclyptor'), 
+                                                                                                                  'Level 39, Two Opponent Lunarwulfs use Howl in the same turn'),
   ((SELECT coro_id FROM coromon WHERE name = 'Eclyptor'), (SELECT coro_id FROM coromon WHERE name = 'Lunarwulf'), NULL, NULL),
   ((SELECT coro_id FROM coromon WHERE name = 'Kryo'), NULL, (SELECT coro_id FROM coromon WHERE name = 'Krypeek'), 'Level 18'),
   ((SELECT coro_id FROM coromon WHERE name = 'Krypeek'), (SELECT coro_id FROM coromon WHERE name = 'Kryo'), (SELECT coro_id FROM coromon WHERE name = 'Krybeest'), 'Level 39'),
@@ -668,10 +672,12 @@ VALUES
   ((SELECT coro_id FROM coromon WHERE name = 'Crimsonite Fiddly'), NULL, (SELECT coro_id FROM coromon WHERE name = 'Crimsonite Ucaclaw'), 'Level 34'),
   ((SELECT coro_id FROM coromon WHERE name = 'Crimsonite Ucaclaw'), (SELECT coro_id FROM coromon WHERE name = 'Crimsonite Fiddly'), NULL, NULL),
   ((SELECT coro_id FROM coromon WHERE name = 'Crimsonite Lumon'), NULL, (SELECT coro_id FROM coromon WHERE name = 'Crimsonite Lampyre'), 'Level 16'),
-  ((SELECT coro_id FROM coromon WHERE name = 'Crimsonite Lampyre'), (SELECT coro_id FROM coromon WHERE name = 'Crimsonite Lumon'), (SELECT coro_id FROM coromon WHERE name = 'Crimsonite Lumasect'), 'Level 30'),
+  ((SELECT coro_id FROM coromon WHERE name = 'Crimsonite Lampyre'), (SELECT coro_id FROM coromon WHERE name = 'Crimsonite Lumon'), 
+                                                                    (SELECT coro_id FROM coromon WHERE name = 'Crimsonite Lumasect'), 'Level 30'),
   ((SELECT coro_id FROM coromon WHERE name = 'Crimsonite Lumasect'), (SELECT coro_id FROM coromon WHERE name = 'Crimsonite Lampyre'), NULL, NULL),
   ((SELECT coro_id FROM coromon WHERE name = 'Crimsonite Decibite'), NULL, (SELECT coro_id FROM coromon WHERE name = 'Crimsonite Centilla'), 'Level 24'),
-  ((SELECT coro_id FROM coromon WHERE name = 'Crimsonite Centilla'), (SELECT coro_id FROM coromon WHERE name = 'Crimsonite Decibite'), (SELECT coro_id FROM coromon WHERE name = 'Crimsonite Millidont'), 'Level 39'),
+  ((SELECT coro_id FROM coromon WHERE name = 'Crimsonite Centilla'), (SELECT coro_id FROM coromon WHERE name = 'Crimsonite Decibite'), 
+                                                                    (SELECT coro_id FROM coromon WHERE name = 'Crimsonite Millidont'), 'Level 39'),
   ((SELECT coro_id FROM coromon WHERE name = 'Crimsonite Millidont'), (SELECT coro_id FROM coromon WHERE name = 'Crimsonite Centilla'), NULL, NULL),
   ((SELECT coro_id FROM coromon WHERE name = 'Crimsonite Arcta'), NULL, (SELECT coro_id FROM coromon WHERE name = 'Crimsonite Arcturos'), 'Level 24'),
   ((SELECT coro_id FROM coromon WHERE name = 'Crimsonite Arcturos'), (SELECT coro_id FROM coromon WHERE name = 'Crimsonite Arcta'), NULL, NULL),
@@ -1399,3 +1405,110 @@ VALUES
   ((SELECT trait_id FROM traits WHERE name = 'Pure Essence Vørst'), (SELECT coro_id FROM coromon WHERE name = 'Vørst'), 1.00),
   ((SELECT trait_id FROM traits WHERE name = 'Pure Essence Chalchiu'), (SELECT coro_id FROM coromon WHERE name = 'Chalchiu'), 1.00),
   ((SELECT trait_id FROM traits WHERE name = 'Pure Essence Chalchiu'), (SELECT coro_id FROM coromon WHERE name = 'Dark Form Chalchiu'), 1.00);
+  
+INSERT INTO effect_types (name, type)
+VALUES
+  -- Stat_Positive
+  ('Evasion', 'Stat_Positive'),
+  ('Accuracy', 'Stat_Positive'),
+  ('Attack', 'Stat_Positive'),
+  ('Defense', 'Stat_Positive'),
+  ('Special_Attack', 'Stat_Positive'),
+  ('Special_Defense', 'Stat_Positive'),
+  ('Speed', 'Stat_Positive'),
+  ('Crit_Chance', 'Stat_Positive'),
+  ('HP', 'Stat_Positive'),
+  ('SP', 'Stat_Positive'),
+  -- Stat_Negative
+  ('Evasion', 'Stat_Negative'),
+  ('Accuracy', 'Stat_Negative'),
+  ('Attack', 'Stat_Negative'),
+  ('Defense', 'Stat_Negative'),
+  ('Special_Attack', 'Stat_Negative'),
+  ('Special_Defense', 'Stat_Negative'),
+  ('Speed', 'Stat_Negative'),
+  ('Crit_Chance', 'Stat_Negative'),
+  ('HP', 'Stat_Negative'),
+  ('SP', 'Stat_Negative'),
+  -- Stat_Other
+  ('Reverse_All', 'Stat_Other'),
+  ('Copy_All_Positive', 'Stat_Other'),
+  -- Stat_Block
+  ('Evasion', 'Stat_Block'),
+  ('Accuracy', 'Stat_Block'),
+  ('Attack', 'Stat_Block'),
+  ('Defense', 'Stat_Block'),
+  ('Special_Attack', 'Stat_Block'),
+  ('Special_Defense', 'Stat_Block'),
+  ('Speed', 'Stat_Block'),
+  ('Crit_Chance', 'Stat_Block'),
+  ('HP', 'Stat_Block'),
+  ('SP', 'Stat_Block'),
+  -- Require_Less
+  ('SP', 'Require_Less'),
+  -- Status
+  ('Burn', 'Status'),
+  ('Shock', 'Status'),
+  ('Curse', 'Status'),
+  ('Poison', 'Status'),
+  ('Drowsy', 'Status'),
+  ('Freeze', 'Status'),
+  ('Haziness', 'Status'),
+  -- Status_Removal
+  ('All', 'Status_Removal'),
+  ('All_Whole_Team', 'Status_Removal'),
+  ('Burn', 'Status_Removal'),
+  ('Shock', 'Status_Removal'),
+  ('Curse', 'Status_Removal'),
+  ('Poison', 'Status_Removal'),
+  ('Poison_Whole_Team', 'Status_Removal'),
+  ('Drowsy', 'Status_Removal'),
+  ('Freeze', 'Status_Removal'),
+  ('Haziness', 'Status_Removal'),
+  -- Status_Negation
+  ('All', 'Status_Negation'),
+  ('Burn', 'Status_Negation'),
+  ('Shock', 'Status_Negation'),
+  ('Curse', 'Status_Negation'),
+  ('Poison', 'Status_Negation'),
+  ('Drowsy', 'Status_Negation'),
+  ('Freeze', 'Status_Negation'),
+  ('Haziness', 'Status_Negation'),
+  -- Percent_Positive
+  ('Attack_Damage', 'Percent_Positive'),
+  ('Attack_Defense', 'Percent_Positive'),
+  ('Special_Attack_Defense', 'Percent_Positive'),
+  ('Experience', 'Percent_Positive'),
+  -- Percent_Negative
+  ('All_Damage', 'Percent_Negative'),
+  ('SP', 'Percent_Negative'),
+  ('Fire', 'Percent_Negative'),
+  ('HP', 'Percent_Negative'),
+  -- Weather
+  ('Heatwave', 'Weather'),
+  ('Rain', 'Weather'),
+  ('Sandstorm', 'Weather'),
+  ('Snow', 'Weather'),
+  ('Twilight', 'Weather'),
+  ('Corrupted_Storm', 'Weather'),
+  ('Removal', 'Weather'),
+  -- Weather_Block
+  ('Heatwave', 'Weather_Block'),
+  ('Rain', 'Weather_Block'),
+  ('Sandstorm', 'Weather_Block'),
+  ('Snow', 'Weather_Block'),
+  ('Twilight', 'Weather_Block'),
+  ('Corrupted_Storm', 'Weather_Block'),
+  ('All', 'Weather_Block'),
+  -- Heal
+  ('HP', 'Heal'),
+  ('SP', 'Heal'),
+  -- Deplete
+  ('HP', 'Deplete'),
+  ('SP', 'Deplete'),
+  -- Other
+  ('Cling_HP', 'Other'),
+  ('Escape_Always', 'Other'),
+  -- Entry_Hazards
+  ('Removal_All', 'Entry_Hazards'),
+  ('Ignore', 'Entry_Hazards');
